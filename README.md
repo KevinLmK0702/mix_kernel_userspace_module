@@ -10,6 +10,7 @@ fps_boost_ctl/
 ├── module.prop            模块信息（版本 / 描述）
 ├── customize.sh           安装钩子（打印说明 + 修正权限）
 ├── service.sh             开机入口：等 /proc/fps_boost → 拉起守护进程
+├── pack.sh                打包脚本（自带校验，见下「打包」）
 ├── bin/
 │   ├── fps_boost_d.sh     守护进程主循环（支持 --once 单轮调试）
 │   └── lib/common.sh      公共库：节点读写 / 配置解析 / 模式预设 / 合并 / 进程识别
@@ -22,6 +23,20 @@ fps_boost_ctl/
     ├── css/app.css
     └── js/{ksu.js,app.js}
 ```
+
+## 打包
+
+```sh
+./pack.sh              # 输出到本仓库的上一级目录
+./pack.sh -o /tmp      # 指定输出目录
+```
+
+产物名 `fps_boost_ctl-v<版本>-<YYMMDD>.zip`，版本号取自 `module.prop`。
+
+脚本会排除 `.git/` —— **本目录自身是个 git 仓库，手敲 `zip -r out.zip .` 会把整个提交历史
+打进包里**（几十 MB，刷入后模块目录里还会多出一个 `.git`），以及 `pack.sh` 自身、已有的 `*.zip`、
+macOS 垃圾文件。打包后自检：`module.prop` / `customize.sh` / `service.sh` 必须在包根、关键文件齐全、
+包内不得有 `.git` 条目 —— 任一不符就删掉产物并以非 0 退出，不会留下一个“看着能刷”的坏包。
 
 ## 安装
 
