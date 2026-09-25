@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>fps_boost</title>
+<script>
+/* 最先执行：主题初始化 + 错误可视化。
+   即使后面的 css/js 加载失败，也能在页面上看到原因（而不是白屏/点不动）。 */
+(function () {
+  try {
+    var saved = localStorage.getItem("fb_theme") || "auto";
+    var dark = saved === "dark" ||
+      (saved === "auto" && !(window.matchMedia &&
+       window.matchMedia("(prefers-color-scheme: light)").matches));
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme-mode", saved);
+    var mt = document.querySelector('meta[name="theme-color"]');
+    if (mt) mt.setAttribute("content", dark ? "#000000" : "#F2F2F4");
+  } catch (e) {}
+  window.showErr = function (msg) {
+    try {
+      var d = document.getElementById("errbar");
+      if (!d) {
+        d = document.createElement("div");
+        d.id = "errbar";
+        (document.body || document.documentElement).appendChild(d);
+      }
+      d.textContent = "WebUI 错误: " + msg;
+    } catch (e) {}
+  };
+  window.onerror = function (m) { window.showErr(m); return false; };
+})();
+</script>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<main>
+
+  <!-- ================= 主界面 ================= -->
+  <section class="page active" id="page-home">
+
+    <div class="topbar">
+      <div>
+        <h1>fps_boost</h1>
+        <div class="tb-sub">帧感知调度 · 内核态提频</div>
+      </div>
+      <button class="iconbtn" id="btnTheme" title="主题" aria-label="切换主题">
+        <svg viewBox="0 0 24 24"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2zm0 19h2v3h-2zM1 11h3v2H1zm19 0h3v2h-3zM4.2 5.6l1.4-1.4 2.1 2.1-1.4 1.4zM16.3 17.7l1.4-1.4 2.1 2.1-1.4 1.4zM19.8 5.6l-2.1 2.1-1.4-1.4 2.1-2.1zM7.7 17.7l-2.1 2.1-1.4-1.4 2.1-2.1z"/></svg>
+      </button>
+    </div>
+
+    <div class="hero" id="hero">
+      <div>
+        <div class="st" id="heroState">读取中…</div>
+        <div class="sub" id="heroSub">—</div>
+        <div class="tag" id="heroTag">—</div>
+      </div>
+    </div>
+
+    <div class="chips" id="pills"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <div><h3>运行状态</h3><div class="cap">显示层帧源 · GED 可选 · 掉帧自动提频</div></div>
+        <button class="btn text small" id="btnRefresh">刷新</button>
+      </div>
+      <div class="card-body">
+        <div class="list">
+          <div class="item">
+            <div class="im"><div class="t">启用</div><div class="s">开机自动接管前台渲染进程</div></div>
+            <label class="sw"><input type="checkbox" id="swEnable"><i></i></label>
+          </div>
+          <div class="item">
+            <div class="im"><div class="t">实测帧率</div><div class="s">EMA 帧间隔换算</div></div>
+            <div class="v"><b id="kFps">-</b><span class="u">fps</span></div>
+          </div>
+          <div class="item">
+            <div class="im"><div class="t">提频状态</div><div class="s">掉帧时抬最低频 / 挂 RTG</div></div>
+            <div class="v" id="kBoost">-</div>
+          </div>
+          <div class="item">
+            <div class="im"><div class="t">提频触发</div><div class="s">本次开机累计</div></div>
+            <div class="v"><b id="kEv">-</b><span class="u">次</span></div>
+          </div>
+          <div class="item">
+            <div class="im"><div class="t">热控压制</div><div class="s">上限没有空间时主动让位</div></div>
+            <div class="v"><b id="kCap">-</b><span class="u">次</span></div>
+          </div>
+          <div class="item">
+            <div class="im"><div class="t">外部改频</div><div class="s">热控 / FPSGO / sysfs 抢占最低频的次数</div></div>
+            <div class="v"><b id="kForeign">-</b><span class="u">次</span></div>
+          </div>
+        </div>
+        <div class="msg" id="stMsg"></div>
+
+        <div class="item link" id="btnRaw">
+          <div class="im"><div class="t">内核原始状态</div><div class="s">cat /proc/fps_boost/status</div></div>
+          <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </div>
+        <div class="rawblock" id="rawBlock"><div class="mono" id="status">读取中…</div></div>
+
+        <div class="item link" id="btnWalt">
+          <div class="im"><div class="t">WALT 调度器</div><div class="s">governor · tunables · decision（只读）</div></div>
+          <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </div>
+        <div class="rawblock" id="waltBlock"><div class="mono" id="waltDump">展开时读取…</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>快速参数</h3><div class="cap">立即写入 /proc/fps_boost（守护脚本随后可能按 profile 覆盖）</div></div></div>
+      <div class="card-body">
+        <div class="grid2">
+          <div class="fld"><label>目标帧率（可 60,90,120）</label><input id="t_target" value="60"></div>
+          <div class="fld"><label>裕量 fps</label><input id="t_margin" value="1" inputmode="numeric"></div>
+          <div class="fld"><label>提频 %</label><input id="t_pct" value="60" inputmode="numeric"></div>
+          <div class="fld"><label>保持 ms</label><input id="t_hold" value="250" inputmode="numeric"></div>
+          <div class="fld"><label>RTG id（组）</label>
+            <div class="sel-wrap">
+              <select id="t_rtg"><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+        </div>
+        <button class="btn block" id="btnApply">立即应用并开启</button>
+        <div class="msg" id="apMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>模式</h3><div class="cap" id="modeCap">预设 boost_pct / hold_ms / graded / rtg_mode</div></div></div>
+      <div class="card-body">
+        <div class="seg" id="modeSeg">
+          <button class="btn" data-mode="powersave">省电</button>
+          <button class="btn" data-mode="balance">均衡</button>
+          <button class="btn" data-mode="performance">性能</button>
+          <button class="btn" data-mode="fast">极速</button>
+        </div>
+        <div class="msg" id="modeMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>全局选项</h3><div class="cap">写入 /data/adb/fps_boost_ctl.opts · 守护脚本自动套用（持久）<br>「仅接管列表内应用」开启时只碰 profiles 里列出的包名；WALT 是内核默认调度器，walt_* 项会让守护脚本每 5s 保持（governor 被重选会冲掉 tunable）</div></div></div>
+      <div class="card-body">
+        <div class="grid2">
+          <div class="fld"><label>RTG id</label>
+            <div class="sel-wrap">
+              <select id="o_rtgid"><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>RTG 挂组时机</label>
+            <div class="sel-wrap">
+              <select id="o_rtgmode">
+                <option value="2">跟踪到就挂</option>
+                <option value="1">仅提频时挂</option>
+                <option value="0">关闭</option>
+              </select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>抬最低频</label>
+            <div class="sel-wrap">
+              <select id="o_floor"><option value="1">开启</option><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>分级提频</label>
+            <div class="sel-wrap">
+              <select id="o_graded"><option value="1">开启</option><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>用 GED 目标帧率</label>
+            <div class="sel-wrap">
+              <select id="o_gedtgt"><option value="1">开启</option><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>控制周期 ms</label><input id="o_sample" value="200" inputmode="numeric"></div>
+          <div class="fld"><label>cpufreq 调度器</label>
+            <div class="sel-wrap">
+              <select id="o_gov"><option value="walt">WALT</option><option value="keep">原生 schedutil</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>仅接管列表内应用</label>
+            <div class="sel-wrap">
+              <select id="o_only"><option value="0">关闭</option><option value="1">开启</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>RTG 目标 kHz/max/空</label><input id="o_rtgf" placeholder="max"></div>
+          <div class="fld"><label>RTG 渲染 pid 自动兜底</label>
+            <div class="sel-wrap">
+              <select id="o_rtgpid_auto"><option value="1">开启</option><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>RTG 渲染 pid（0=自动）</label><input id="o_rtgpid" value="0" inputmode="numeric"></div>
+          <div class="fld"><label>WALT 自动取默认频点</label>
+            <div class="sel-wrap">
+              <select id="o_wauto"><option value="1">开启</option><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>WALT 预测负载 pl</label>
+            <div class="sel-wrap">
+              <select id="o_wpl"><option value="1">开启</option><option value="0">关闭</option></select>
+              <svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg>
+            </div>
+          </div>
+          <div class="fld"><label>WALT hispeed kHz/max/空</label><input id="o_whf" placeholder="空=内核默认"></div>
+          <div class="fld"><label>WALT hispeed_load %</label><input id="o_whl" placeholder="空=90" inputmode="numeric"></div>
+          <div class="fld"><label>WALT boost %（可负）</label><input id="o_wboost" placeholder="空=0" inputmode="numeric"></div>
+        </div>
+        <button class="btn block" id="btnSaveOpts">保存全局选项</button>
+        <div class="msg" id="opMsg"></div>
+      </div>
+    </div>
+
+    <div class="card tight">
+      <div class="item link" id="btnGoLog">
+        <div class="im"><div class="t">日志</div><div class="s">守护进程日志 · 配置 · 运行环境自检</div></div>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 配置 ================= -->
+  <section class="page" id="page-config">
+    <div class="topbar">
+      <div>
+        <h1>配置</h1>
+        <div class="tb-sub">前台渲染进程命中即套用 · * = 全局默认 · – = 沿用模式</div>
+      </div>
+      <button class="btn tonal small" id="btnSaveConf">保存</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>每应用参数</h3><div class="cap">fps / margin / pct / hold / rtg</div></div></div>
+      <div class="card-body">
+        <div id="alist"></div>
+        <div class="addbar">
+          <input id="inPkg" placeholder="包名，如 com.miHoYo.Yuanshen">
+          <button class="btn tonal small" id="btnAdd">添加</button>
+          <button class="btn text small" id="btnAddExcl">排除</button>
+          <button class="btn text small" id="btnFg">当前</button>
+        </div>
+        <div class="msg" id="cfMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>已安装应用</h3><div class="cap">点 ＋ 加入上表</div></div></div>
+      <div class="card-body">
+        <div class="addbar" style="margin-top:0">
+          <input id="inSearch" placeholder="搜索应用…">
+        </div>
+        <div class="applist" id="apppick"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 关于 ================= -->
+  <section class="page" id="page-about">
+    <div class="topbar">
+      <div>
+        <h1>关于</h1>
+        <div class="tb-sub">fps_boost_ctl · 内核态帧感知提频控制</div>
+      </div>
+      <button class="btn tonal small" id="btnAboutRefresh">刷新</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>模块</h3><div class="cap">由 KernelSU / Magisk 加载</div></div></div>
+      <div class="card-body">
+        <div class="rows" id="abInfo"></div>
+        <div class="msg" id="abBridge"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>内核状态</h3><div class="cap">cat /proc/fps_boost/status</div></div></div>
+      <div class="card-body"><div class="mono" id="abStatus">加载中…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>守护进程日志</h3><div class="cap">/data/adb/fps_boost_ctl.log · 最近 40 行</div></div></div>
+      <div class="card-body"><div class="mono" id="abDaemon">加载中…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>配置文件</h3><div class="cap">/data/adb/fps_boost_ctl.conf</div></div></div>
+      <div class="card-body"><div class="mono" id="abConf">加载中…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>运行环境自检</h3><div class="cap">渲染引擎与桥接能力（排障用）</div></div></div>
+      <div class="card-body"><div class="mono" id="abEnv">…</div></div>
+    </div>
+  </section>
+</main>
+
+<nav class="navbar" id="navbar">
+  <button data-page="home" aria-selected="true">
+    <span class="ind"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg></span>
+    <span>主界面</span>
+  </button>
+  <button data-page="config" aria-selected="false">
+    <span class="ind"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7zm7.4-2.6l2.1 1.6-2.1 3.4-2.4-1a8 8 0 0 1-1.7 1l-.4 2.4h-4.2l-.4-2.4a8 8 0 0 1-1.7-1l-2.4 1-2.1-3.4 2.1-1.6a8 8 0 0 1 0-2L2.1 11l2.1-3.4 2.4 1a8 8 0 0 1 1.7-1l.4-2.4h4.2l.4 2.4a8 8 0 0 1 1.7 1l2.4-1 2.1 3.4-2.1 1.6a8 8 0 0 1 0 2z"/></svg><i class="badge" id="navBadge"></i></span>
+    <span>配置</span>
+  </button>
+  <button data-page="about" aria-selected="false">
+    <span class="ind"><svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z"/></svg></span>
+    <span>关于</span>
+  </button>
+</nav>
+
+<div id="toast"></div>
+
+<script src="js/ksu.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
