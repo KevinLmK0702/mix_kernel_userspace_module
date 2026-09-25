@@ -1,6 +1,6 @@
 id=fps_boost_ctl
 name=fps_boost 帧感知调度控制
-version=v2.1.4
-versionCode=32
+version=v2.1.5
+versionCode=33
 author=DeepSeek V4.1 Flash, 酷安@Kevin_Cat
 description=适用于 fps_boost 内核模块的用户态模块

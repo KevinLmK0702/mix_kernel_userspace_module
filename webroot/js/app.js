@@ -461,12 +461,26 @@
     }).join("\n") + "\n";
   }
 
-  function saveConf() {
+  function saveConf(doneMsg) {
+    if (typeof doneMsg !== "string") doneMsg = "";
     var b64 = btoa(unescape(encodeURIComponent(ser())));
     return KSU.exec("echo " + shq(b64) + " | base64 -d > " + CONF + " && chmod 644 " + CONF).then(function (r) {
-      setMsg("cfMsg", r.errno === 0 ? "已保存到 " + CONF : "保存失败 " + (r.stderr || r.stdout), r.errno === 0);
-      if (r.errno === 0) toast("配置已保存");
+      setMsg("cfMsg", r.errno === 0 ? (doneMsg || ("已保存到 " + CONF)) : ("保存失败 " + (r.stderr || r.stdout)), r.errno === 0);
+      if (r.errno === 0) toast(doneMsg || "配置已保存");
     });
+  }
+
+  /* 移除一个应用并立即落盘。
+     旧版只改内存不写文件，用户不点「保存列表」就看不到任何效果（回到页面应用还在），
+     所以「删不掉」这个现象其实是没保存 —— 删除是明确的破坏性操作，直接写盘。 */
+  function removePkg(pkg) {
+    var i;
+    for (i = 0; i < profiles.length; i++) {
+      if (profiles[i].pkg === pkg) { profiles.splice(i, 1); break; }
+    }
+    renderConf();
+    renderAppPick($("inSearch") ? $("inSearch").value : "");
+    return saveConf("已移除 " + pkg + "，已保存");
   }
 
   var TRASH = '<svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
@@ -488,6 +502,8 @@
       var isG = o.pkg === "*";
       var info = appInfo[o.pkg];
       var nm = isG ? "全局默认 · 未匹配任何应用" : ((info && info.label) ? info.label : o.pkg);
+      var wrap = document.createElement("div");
+      wrap.className = "prow";
       var row = document.createElement("div");
       row.className = "row";
       row.innerHTML =
@@ -495,18 +511,25 @@
         '<div class="info">' +
         '<div class="t">' + esc(nm) + "</div>" +
         '<div class="s">' + esc(isG ? "*" : o.pkg) +
-        (o.excl ? " · 黑名单：完全不接管（enable 0）"
-                : " · target " + esc(o.t) + " fps · margin " + esc(o.m) +
-                  " · boost " + esc(o.p) + "% · hold " + esc(o.h) + "ms · rtg " + esc(o.r || "-")) +
-        "</div>" +
-        (o.excl ? "" : '<div class="mini">' +
-        '<div class="fld"><label>fps</label><input data-k="t" value="' + esc(o.t) + '"></div>' +
-        '<div class="fld"><label>margin</label><input data-k="m" value="' + esc(o.m) + '"></div>' +
-        '<div class="fld"><label>pct</label><input data-k="p" value="' + esc(o.p) + '"></div>' +
-        '<div class="fld"><label>hold</label><input data-k="h" value="' + esc(o.h) + '"></div>' +
-        '<div class="fld"><label>rtg</label><input data-k="r" value="' + esc(o.r || "-") + '"></div>' +
-        "</div>") + "</div>" +
-        '<button class="icon-btn" data-del="1"' + (isG ? ' style="visibility:hidden"' : "") + ">" + TRASH + "</button>";
+        (o.excl ? " · 黑名单：完全不接管（enable 0）" : "") +
+        "</div></div>" +
+        '<button class="icon-btn" data-del="1"' + (isG ? ' style="visibility:hidden"' : "") +
+        ' title="移除" aria-label="移除">' + TRASH + "</button>";
+      wrap.appendChild(row);
+
+      /* 编辑器放整行下面（原来嵌在 .info 里只有 220px 宽，5 个输入框每个剩 30 多像素）。
+         黑名单行没有可调参数，就不显示编辑器。 */
+      if (!o.excl) {
+        var mini = document.createElement("div");
+        mini.className = "mini";
+        mini.innerHTML =
+          '<div class="fld"><label>帧率</label><input data-k="t" value="' + esc(o.t) + '"></div>' +
+          '<div class="fld"><label>裕量</label><input inputmode="numeric" data-k="m" value="' + esc(o.m) + '"></div>' +
+          '<div class="fld"><label>提频%</label><input inputmode="numeric" data-k="p" value="' + esc(o.p) + '"></div>' +
+          '<div class="fld"><label>保持ms</label><input inputmode="numeric" data-k="h" value="' + esc(o.h) + '"></div>' +
+          '<div class="fld"><label>RTG</label><input inputmode="numeric" data-k="r" value="' + esc(o.r || "-") + '"></div>';
+        wrap.appendChild(mini);
+      }
 
       /* 非全局行：有图标就用管理器图标，失败回落到字母头像 */
       if (!isG) {
@@ -520,12 +543,9 @@
       }
 
       var del = row.querySelector("[data-del]");
-      del.onclick = function () {
-        var i = profiles.indexOf(o);
-        if (i >= 0) { profiles.splice(i, 1); renderConf(); }
-      };
+      if (del) del.onclick = function () { removePkg(o.pkg); };
 
-      var inps = row.querySelectorAll("input"), ii;
+      var inps = wrap.querySelectorAll("input"), ii;
       for (ii = 0; ii < inps.length; ii++) (function (inp) {
         inp.oninput = function () {
           var k = inp.getAttribute("data-k"), v = inp.value.replace(/^\s+|\s+$/g, "");
@@ -539,7 +559,7 @@
         };
       })(inps[ii]);
 
-      box.appendChild(row);
+      box.appendChild(wrap);
     });
   }
 
@@ -626,10 +646,14 @@
       var added = profiles.some(function (x) { return x.pkg === a.pkg; });
       row.innerHTML = '<div class="av ph">' + esc((a.label || a.pkg).charAt(0).toUpperCase()) + "</div>" +
         '<div class="info"><div class="nm">' + esc(a.label) + '</div><div class="pk">' + esc(a.pkg) + "</div></div>" +
-        (added ? '<span class="chip" style="opacity:.6">已添加</span>'
-               : '<button class="chip" data-add="' + esc(a.pkg) + '">＋</button>');
+        (added
+          ? '<button class="chip chip-del" data-rmapp="' + esc(a.pkg) + '" title="从列表移除">移除</button>'
+          : '<button class="chip" data-add="' + esc(a.pkg) + '">＋</button>');
       var b = row.querySelector("[data-add]");
       if (b) b.onclick = function () { addPkg(this.getAttribute("data-add")); };
+      var rm = row.querySelector("[data-rmapp]");
+      /* 旧版这里是个不可点的 <span>已添加</span>，点了没反应 -> 用户以为“不能移除应用” */
+      if (rm) rm.onclick = function () { removePkg(this.getAttribute("data-rmapp")); };
       box.appendChild(row);
     }
     if (!shown) placeHolder(f ? "无匹配" : "加载中或为空…");
@@ -720,7 +744,7 @@
 
   function bindConfig() {
     var b;
-    if ((b = $("btnSaveConf"))) b.onclick = saveConf;
+    if ((b = $("btnSaveConf"))) b.onclick = function () { saveConf(); };
     if ((b = $("btnAdd"))) b.onclick = function () { addPkg($("inPkg").value); $("inPkg").value = ""; };
     if ((b = $("btnAddExcl"))) b.onclick = function () { addEntry($("inPkg").value, true); $("inPkg").value = ""; };
     if ((b = $("inPkg"))) b.onkeydown = function (e) { if (e.keyCode === 13) { addPkg(this.value); this.value = ""; } };
