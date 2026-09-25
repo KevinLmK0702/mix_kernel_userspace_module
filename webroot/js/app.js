@@ -1,7 +1,7 @@
 /* ============================================================================
  * fps_boost_ctl · WebUI 业务逻辑
  *
- * 三个页面：主界面（状态/快速参数/模式/全局选项）、配置（每应用 profile）、关于。
+ * 三个页面：主界面（状态 / 模式）、配置（每应用 profile / 快速参数 / 全局选项）、关于。
  * 约定：
  *  - 所有写 /proc 与 /data/adb 的命令都经 shWrite()/shq() 生成，
  *    值一律加双引号并做字符白名单过滤；**绝不能**写成 "echo 1>文件"
@@ -830,27 +830,24 @@
     safe(function () { refresh(); });
     safe(loadConf); safe(loadOpts); safe(loadMode); safe(refreshAbout);
     safe(refreshModuleState);
-    /* 每 3s 只看一眼首页状态；页面在后台/息屏时跳过 —— 每次 refresh() 都要起一 次
+    /* 每 3s 刷新一次状态；页面在后台/息屏时跳过 —— 每次 refresh() 都要起一次
        shell，后台白跑既费电又没意义。
-       模块状态变化很慢（装/卸模块、守护进程起停），每 5 轮（15s）才读一次。 */
+       主界面（状态卡 / hero）与配置页（快速参数、全局选项要实时回读）都要刷，
+       其它页面不跑。模块状态变化很慢（装/卸模块、守护进程起停），每 5 轮（15s）读一次。 */
     var modTick = 0;
-    setInterval(function () {
-      var h;
+    function tick() {
+      var act, id;
       if (document.hidden) return;
-      h = $("page-home");
-      if (h && h.className.indexOf("active") >= 0) {
-        refresh();
-        if (++modTick >= 5) { modTick = 0; refreshModuleState(); }
-      }
-    }, 3000);
+      act = document.querySelector(".page.active");
+      id = act ? act.id : "";
+      if (id !== "page-home" && id !== "page-config") return;
+      refresh();
+      if (id === "page-home" && ++modTick >= 5) { modTick = 0; refreshModuleState(); }
+    }
+    setInterval(tick, 3000);
 
     /* 回到前台立刻补一次，不用等下一个 3s 周期 */
-    document.addEventListener("visibilitychange", function () {
-      var h;
-      if (document.hidden) return;
-      h = $("page-home");
-      if (h && h.className.indexOf("active") >= 0) refresh();
-    });
+    document.addEventListener("visibilitychange", tick);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

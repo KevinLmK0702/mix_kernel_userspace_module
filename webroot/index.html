@@ -127,6 +127,61 @@
     </div>
 
     <div class="card">
+      <div class="card-head"><div><h3>模式</h3><div class="cap" id="modeCap">预设 boost_pct / hold_ms / graded / rtg_mode</div></div></div>
+      <div class="card-body">
+        <div class="seg" id="modeSeg">
+          <button class="btn" data-mode="powersave">省电</button>
+          <button class="btn" data-mode="balance">均衡</button>
+          <button class="btn" data-mode="performance">性能</button>
+          <button class="btn" data-mode="fast">极速</button>
+        </div>
+        <div class="msg" id="modeMsg"></div>
+      </div>
+    </div>
+
+    <div class="card tight">
+      <div class="item link" id="btnGoLog">
+        <div class="im"><div class="t">日志</div><div class="s">守护进程日志 · 配置 · 运行环境自检</div></div>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 配置 ================= -->
+  <section class="page" id="page-config">
+    <div class="topbar">
+      <div>
+        <h1>配置</h1>
+        <div class="tb-sub">前台渲染进程命中即套用 · * = 全局默认 · – = 沿用模式</div>
+      </div>
+      <button class="btn tonal small" id="btnSaveConf" title="保存应用列表到 fps_boost_ctl.conf">保存列表</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>每应用参数</h3><div class="cap">fps / margin / pct / hold / rtg</div></div></div>
+      <div class="card-body">
+        <div id="alist"></div>
+        <div class="addbar">
+          <input id="inPkg" placeholder="包名，如 com.miHoYo.Yuanshen">
+          <button class="btn tonal small" id="btnAdd">添加</button>
+          <button class="btn text small" id="btnAddExcl">排除</button>
+          <button class="btn text small" id="btnFg">当前</button>
+        </div>
+        <div class="msg" id="cfMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>已安装应用</h3><div class="cap">点 ＋ 加入上表</div></div></div>
+      <div class="card-body">
+        <div class="addbar" style="margin-top:0">
+          <input id="inSearch" placeholder="搜索应用…">
+        </div>
+        <div class="applist" id="apppick"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-head"><div><h3>快速参数</h3><div class="cap">立即写入 /proc/fps_boost（守护脚本随后可能按 profile 覆盖）</div></div></div>
       <div class="card-body">
         <div class="grid2">
@@ -143,19 +198,6 @@
         </div>
         <button class="btn block" id="btnApply">立即应用并开启</button>
         <div class="msg" id="apMsg"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><div><h3>模式</h3><div class="cap" id="modeCap">预设 boost_pct / hold_ms / graded / rtg_mode</div></div></div>
-      <div class="card-body">
-        <div class="seg" id="modeSeg">
-          <button class="btn" data-mode="powersave">省电</button>
-          <button class="btn" data-mode="balance">均衡</button>
-          <button class="btn" data-mode="performance">性能</button>
-          <button class="btn" data-mode="fast">极速</button>
-        </div>
-        <div class="msg" id="modeMsg"></div>
       </div>
     </div>
 
@@ -236,48 +278,6 @@
         </div>
         <button class="btn block" id="btnSaveOpts">保存全局选项</button>
         <div class="msg" id="opMsg"></div>
-      </div>
-    </div>
-
-    <div class="card tight">
-      <div class="item link" id="btnGoLog">
-        <div class="im"><div class="t">日志</div><div class="s">守护进程日志 · 配置 · 运行环境自检</div></div>
-        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= 配置 ================= -->
-  <section class="page" id="page-config">
-    <div class="topbar">
-      <div>
-        <h1>配置</h1>
-        <div class="tb-sub">前台渲染进程命中即套用 · * = 全局默认 · – = 沿用模式</div>
-      </div>
-      <button class="btn tonal small" id="btnSaveConf">保存</button>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><div><h3>每应用参数</h3><div class="cap">fps / margin / pct / hold / rtg</div></div></div>
-      <div class="card-body">
-        <div id="alist"></div>
-        <div class="addbar">
-          <input id="inPkg" placeholder="包名，如 com.miHoYo.Yuanshen">
-          <button class="btn tonal small" id="btnAdd">添加</button>
-          <button class="btn text small" id="btnAddExcl">排除</button>
-          <button class="btn text small" id="btnFg">当前</button>
-        </div>
-        <div class="msg" id="cfMsg"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><div><h3>已安装应用</h3><div class="cap">点 ＋ 加入上表</div></div></div>
-      <div class="card-body">
-        <div class="addbar" style="margin-top:0">
-          <input id="inSearch" placeholder="搜索应用…">
-        </div>
-        <div class="applist" id="apppick"></div>
       </div>
     </div>
   </section>
