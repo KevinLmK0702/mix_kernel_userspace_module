@@ -98,16 +98,32 @@
   /* 每个页面各自的滚动位置：切回来时接着看，而不是永远跳回顶部 */
   var pageScroll = {};
 
+  /* 底部导航的按钮顺序 = 页面顺序，用来判断翻页方向 */
+  function pageIndex(pg) {
+    var bs = document.querySelectorAll("#navbar button"), i;
+    for (i = 0; i < bs.length; i++)
+      if (bs[i].getAttribute("data-page") === pg) return i;
+    return -1;
+  }
+
   function showPage(pg) {
     var bs = document.querySelectorAll("#navbar button"), ss = document.querySelectorAll(".page"), i;
-    var html = document.documentElement, prev = document.querySelector(".page.active"), y;
+    var html = document.documentElement, prev = document.querySelector(".page.active"), y, dir = "";
 
     if (prev && prev.id) pageScroll[prev.id] = window.pageYOffset || 0;
+
+    /* 翻页方向：索引变大 = 前进（新页从右滑入），变小 = 后退（从左滑入）。
+       同页重入或找不到索引时不加方向 class（回落成 fade，兼当“已在此页”的反馈）。 */
+    if (prev && prev.id !== "page-" + pg) {
+      var a = pageIndex(prev.id.replace(/^page-/, "")), b = pageIndex(pg);
+      if (a >= 0 && b >= 0 && a !== b) dir = b > a ? "fwd" : "back";
+    }
 
     for (i = 0; i < bs.length; i++)
       bs[i].setAttribute("aria-selected", bs[i].getAttribute("data-page") === pg ? "true" : "false");
     for (i = 0; i < ss.length; i++) {
-      if (ss[i].id === "page-" + pg) ss[i].className = "page active";
+      if (ss[i].id === "page-" + pg)
+        ss[i].className = "page active" + (dir ? " slide " + dir : "");
       else ss[i].className = "page";
     }
 
@@ -145,15 +161,16 @@
     if (pid !== heroPid) {
       heroPid = pid;
       heroPidName = "";
-      KSU.exec("cat /proc/" + pid + "/cmdline 2>/dev/null").then(function (r) {
-        /* cmdline 用 \0 分隔；部分桥接会丢掉 NUL，所以按行/空白再取第一个 token */
-        var raw = String(r.stdout || "");
-        var n = raw.split("\u0000")[0].split(/\s+/)[0];
-        if (heroPid !== pid || !n) return;
-        heroPidName = n;
-        var el = $("heroSub");
-        if (el) el.textContent = "模式 " + curMode + " · " + n;
-      });
+      /* cmdline 用 \0 分隔，先用 tr 换成行（与 fb_foreground_pkg 同一套命令） */
+      KSU.exec("cat /proc/" + pid + "/cmdline 2>/dev/null | tr '\\0' '\\n' | head -n1")
+        .then(function (r) {
+          /* 万一桥接丢了 NUL，再按换行/空白取第一个 token 兜底 */
+          var n = String(r.stdout || "").split("\n")[0].split("\u0000")[0].split(/\s+/)[0];
+          if (heroPid !== pid || !n) return;
+          heroPidName = n;
+          var el = $("heroSub");
+          if (el) el.textContent = "模式 " + curMode + " · " + n;
+        });
     }
     return "渲染进程 " + (heroPidName || ("pid " + pid));
   }
@@ -681,7 +698,8 @@
         n = body.childNodes[i];
         if (n && n.nodeType === 3) {
           s = String(n.nodeValue || "");
-          if (/^(?:\\s|\\\\[nr])+$/.test(s)) n.nodeValue = "";
+          /* 纯空白，或只由字面 \\n / \\r（单个反斜杠 + n/r）拼成的文本节点 -> 直接删掉 */
+          if (/^(?:\s|\\[nr])+$/.test(s)) n.nodeValue = "";
         }
       }
     } catch (e) {}
@@ -695,9 +713,9 @@
       el = $(ids[i]);
       if (!el) continue;
       el.addEventListener("pointerdown", function () { this.className += " is-pressing"; });
-      el.addEventListener("pointerup", function () { this.className = this.className.replace(/\\s+is-pressing/g, ""); });
-      el.addEventListener("pointercancel", function () { this.className = this.className.replace(/\\s+is-pressing/g, ""); });
-      el.addEventListener("pointerleave", function () { this.className = this.className.replace(/\\s+is-pressing/g, ""); });
+      el.addEventListener("pointerup", function () { this.className = this.className.replace(/\s+is-pressing/g, ""); });
+      el.addEventListener("pointercancel", function () { this.className = this.className.replace(/\s+is-pressing/g, ""); });
+      el.addEventListener("pointerleave", function () { this.className = this.className.replace(/\s+is-pressing/g, ""); });
     }
 
     var inputs = document.querySelectorAll("input, select");

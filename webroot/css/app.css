@@ -352,6 +352,23 @@ button.chip { color: var(--accent-2); background: var(--accent-soft); }
 .page.active { display: block; animation: fade .22s ease; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+/* 平移翻页：showPage() 按底部导航顺序给方向，.fwd = 新页从右侧滑入、
+   .back = 从左侧滑入。
+   两点注意：
+   1) 动画终态写 transform:none，动画结束后不会残留 containing block/层叠上下文；
+   2) 这两个 class 故意不主动摘除 —— 摘掉会让 animation 回落到 .page.active 的
+      fade 上重播一次；页面离开时 className 被重置成 "page"，再进来自然会重触发。 */
+.page.active.slide.fwd { animation: fbPageInR .28s cubic-bezier(.22, .61, .36, 1) both; }
+.page.active.slide.back { animation: fbPageInL .28s cubic-bezier(.22, .61, .36, 1) both; }
+@keyframes fbPageInR {
+  from { opacity: 0; transform: translate3d(32px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fbPageInL {
+  from { opacity: 0; transform: translate3d(-32px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* ------------------------------------------------------------ 底部导航 */
 .navbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
