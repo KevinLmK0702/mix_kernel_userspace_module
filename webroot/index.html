@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#000000">\n<meta name="color-scheme" content="dark light">\n<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark light">
+<meta name="format-detection" content="telephone=no">
 <title>fps_boost</title>
 <script>
 /* 最先执行：主题初始化 + 错误可视化。
@@ -53,10 +55,22 @@
     </div>
 
     <div class="hero" id="hero">
-      <div>
+      <div class="hero-copy">
         <div class="st" id="heroState">读取中…</div>
         <div class="sub" id="heroSub">—</div>
         <div class="tag" id="heroTag">—</div>
+      </div>
+      <div class="hero-icon hero-icon-check" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42"></circle>
+          <path d="M30 51l13 13 28-29"></path>
+        </svg>
+      </div>
+      <div class="hero-icon hero-icon-off" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42"></circle>
+          <path d="M34 34l32 32M66 34L34 66"></path>
+        </svg>
       </div>
     </div>
 
