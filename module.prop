@@ -3,4 +3,4 @@ name=fps_boost 帧感知调度控制
 version=v2.1.4
 versionCode=32
 author=DeepSeek V4.1 Flash, 酷安@Kevin_Cat
-description=Material 3 风格 WebUI + 守护进程：按内核跟踪的渲染进程 pid 识别应用（不再每秒 dumpsys）、配置拆分 conf/、热重载与自动合并、黑名单/仅列表内应用；模式预设/帧率档位/RTG/cpufreq 上限感知；WALT governor tunables（auto_boost/pl/hispeed/boost 等，governor 被重选后自动保持）与 rtg_pid 自动兜底；首页状态大卡显示模块启用与守护进程状态，日志记录提频开始/结束与生效频率。
+description=适用于 fps_boost 内核模块的用户态模块
