@@ -632,11 +632,33 @@
     if (b) b.onclick = refreshAbout;
   }
 
+  /* ------------------------------------------------------------ UI 反馈增强 */
+  function enhanceUi() {
+    var ids = ["btnApply", "btnSaveOpts", "btnSaveConf", "btnRefresh", "btnAboutRefresh"];
+    var i, el;
+    for (i = 0; i < ids.length; i++) {
+      el = $(ids[i]);
+      if (!el) continue;
+      el.addEventListener("pointerdown", function () { this.className += " is-pressing"; });
+      el.addEventListener("pointerup", function () { this.className = this.className.replace(/\\s+is-pressing/g, ""); });
+      el.addEventListener("pointercancel", function () { this.className = this.className.replace(/\\s+is-pressing/g, ""); });
+      el.addEventListener("pointerleave", function () { this.className = this.className.replace(/\\s+is-pressing/g, ""); });
+    }
+
+    var inputs = document.querySelectorAll("input, select");
+    for (i = 0; i < inputs.length; i++) inputs[i].setAttribute("autocomplete", "off");
+
+    var nav = $("navbar");
+    if (nav) nav.setAttribute("role", "navigation");
+    var cards = document.querySelectorAll(".card");
+    for (i = 0; i < cards.length; i++) cards[i].setAttribute("role", "region");
+  }
+
   /* ------------------------------------------------------------ 启动 */
   function safe(fn) { try { return fn(); } catch (e) { window.showErr && window.showErr(e && e.message ? e.message : String(e)); } }
 
   function boot() {
-    safe(bindTheme); safe(bindNav); safe(bindHome); safe(bindConfig); safe(bindAbout);
+    safe(bindTheme); safe(bindNav); safe(bindHome); safe(bindConfig); safe(bindAbout); safe(enhanceUi);
     safe(function () { fillRtgId("o_rtgid"); fillRtgId("t_rtg"); });
     safe(function () { refresh(); });
     safe(loadConf); safe(loadOpts); safe(loadMode); safe(refreshAbout);

@@ -414,3 +414,342 @@ html[data-theme="light"] .navbar { border-top-color: rgba(0,0,0,.06); }
   font-size: 12.5px; line-height: 1.45;
   word-break: break-all;
 }
+
+
+/* ============================================================================
+ * fps_boost_ctl WebUI · UI Enhancement 2026
+ * 仅视觉与交互反馈，不改变业务逻辑。
+ * ========================================================================== */
+
+:root {
+  --ui-radius-xl: 28px;
+  --ui-radius-lg: 22px;
+  --ui-control-h: 46px;
+  --ui-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+html {
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 50% -120px, var(--accent-soft), transparent 42%),
+    var(--bg);
+}
+
+main {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-bottom: 10px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg) 96%, transparent),
+    color-mix(in srgb, var(--bg) 78%, transparent)
+  );
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.topbar h1 {
+  font-size: clamp(30px, 8vw, 38px);
+  line-height: 1.05;
+}
+
+.hero,
+.card {
+  box-shadow:
+    0 1px 0 var(--scrim),
+    0 10px 30px rgba(0,0,0,.045);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--outline);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  right: -34px;
+  top: -52px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  filter: blur(2px);
+  opacity: .75;
+  pointer-events: none;
+}
+
+.card {
+  border: 1px solid var(--outline);
+  border-radius: var(--ui-radius-xl);
+}
+
+.card-head {
+  padding-top: 19px;
+}
+
+.card-body {
+  padding-top: 10px;
+}
+
+.item {
+  min-height: 46px;
+  border-radius: 16px;
+  transition:
+    background .16s var(--ui-ease),
+    transform .16s var(--ui-ease);
+}
+
+.item.link {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.item.link:active {
+  background: var(--scrim);
+  transform: scale(.992);
+}
+
+.fld input,
+.sel-wrap select,
+.addbar input {
+  min-height: var(--ui-control-h);
+  transition:
+    border-color .16s var(--ui-ease),
+    background .16s var(--ui-ease),
+    box-shadow .16s var(--ui-ease),
+    transform .16s var(--ui-ease);
+}
+
+.fld input:focus,
+.sel-wrap select:focus,
+.addbar input:focus {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.btn,
+.iconbtn,
+.icon-btn,
+.chip,
+.sw {
+  touch-action: manipulation;
+}
+
+.btn {
+  min-height: 42px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  transition:
+    transform .14s var(--ui-ease),
+    filter .14s var(--ui-ease),
+    box-shadow .14s var(--ui-ease);
+}
+
+.btn:hover {
+  filter: brightness(1.035);
+}
+
+.btn:active {
+  transform: scale(.975);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.btn:focus-visible,
+.iconbtn:focus-visible,
+.icon-btn:focus-visible,
+.chip:focus-visible,
+.navbar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.iconbtn {
+  border: 1px solid var(--outline);
+  box-shadow: 0 4px 14px rgba(0,0,0,.06);
+}
+
+.grid2 {
+  gap: 12px;
+}
+
+.seg {
+  padding: 3px;
+  gap: 3px;
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+.seg .btn {
+  min-height: 40px;
+}
+
+.seg .btn + .btn {
+  border-left: 0;
+}
+
+.seg .btn[aria-pressed="true"] {
+  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+}
+
+.mini {
+  gap: 8px;
+}
+
+.addbar {
+  align-items: center;
+}
+
+.addbar .btn {
+  min-width: 64px;
+}
+
+.applist {
+  max-height: 46vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.appitem {
+  border-radius: 18px;
+  padding: 10px;
+  margin: 2px 0;
+  transition: background .16s var(--ui-ease);
+}
+
+.appitem:active {
+  background: var(--scrim);
+}
+
+.mono {
+  border: 1px solid var(--outline);
+}
+
+.navbar {
+  box-shadow: 0 -6px 24px rgba(0,0,0,.08);
+}
+
+.navbar button {
+  min-height: 52px;
+}
+
+#toast {
+  box-shadow: 0 10px 28px rgba(0,0,0,.18);
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .topbar h1 {
+    font-size: 30px;
+  }
+
+  .topbar .tb-sub {
+    max-width: 70vw;
+  }
+
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid2 > .fld {
+    width: 100%;
+  }
+
+  .mini {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow-x: auto;
+  }
+
+  .mini .fld input {
+    min-width: 0;
+  }
+
+  .addbar {
+    flex-wrap: wrap;
+  }
+
+  .addbar input {
+    flex: 1 1 100%;
+  }
+
+  .addbar .btn {
+    flex: 1 1 0;
+  }
+
+  .hero {
+    padding: 20px 18px;
+    border-radius: 24px;
+  }
+
+  .hero .st {
+    font-size: 27px;
+  }
+
+  .card {
+    margin: 12px 0;
+    border-radius: 23px;
+  }
+
+  .card-head {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .card-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .navbar button .ind {
+    width: 56px;
+  }
+}
+
+@media (min-width: 900px) {
+  body {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .navbar {
+    left: 50%;
+    right: auto;
+    width: min(760px, calc(100% - 24px));
+    transform: translateX(-50%);
+    border: 1px solid var(--outline);
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
