@@ -184,11 +184,12 @@
     $("kCap").textContent = o.capped_event || 0;
     $("kForeign").textContent = o.foreign_evt || 0;
 
-    /* 状态大卡：已关闭 / 待机中 / 提频中 三态着色 */
+    /* 状态大卡：大标题直接写模块开/关（底色仍表示提频活动：深绿=提频中 /
+       浅绿=待机 / 灰=已关闭），提频细节交给药丸和「运行状态」卡 */
     var hero = $("hero");
     if (hero) {
       hero.className = "hero " + (on ? (b ? "on hot" : "on") : "off");
-      $("heroState").textContent = on ? (b ? "提频中" : "待机中") : "已关闭";
+      $("heroState").textContent = on ? "模块已开启" : "模块已关闭";
       $("heroSub").textContent = "模式 " + curMode + " · " + heroSubText(o);
       var tgt = (o.target_list && o.target_list !== "(none)") ? o.target_list : o.target_fps;
       $("heroTag").textContent = "目标 " + (tgt || "-") + " fps ± " + (o.margin_fps || 0) +
@@ -232,6 +233,64 @@
     });
   }
 
+  /* --------------------------------------------------------- 模块状态 */
+  /* 一次 shell 把「模块是否启用 / 内核节点 / 守护进程 / 提频接管」全读回来（只起一个
+     进程）。输出沿用 parseStatus 认的 "key : value" 格式。
+     模块启用状态直接看 /data/adb/modules/<id>：KernelSU 与 Magisk 都用 disable 文件
+     表示停用，比桥接的 moduleInfo().enabled 可靠（各管理器版本字段不一致）。 */
+  var MOD_CMD =
+    'm=/data/adb/modules/fps_boost_ctl; ' +
+    'if [ -d "$m" ]; then ' +
+      'if [ -f "$m/remove" ]; then echo "mod : removed"; ' +
+      'elif [ -f "$m/disable" ]; then echo "mod : disabled"; ' +
+      'else echo "mod : enabled"; fi; ' +
+    'else echo "mod : absent"; fi; ' +
+    'if [ -d /proc/fps_boost ]; then echo "node : 1"; ' +
+      'echo "enable : $(cat /proc/fps_boost/enable 2>/dev/null)"; ' +
+    'else echo "node : 0"; echo "enable : ?"; fi; ' +
+    'p=$(cat /data/adb/fps_boost_ctl.pid 2>/dev/null); ' +
+    'if [ -n "$p" ] && kill -0 "$p" 2>/dev/null && ' +
+      "tr '\\0' ' ' < /proc/$p/cmdline 2>/dev/null | grep -q fps_boost_d; then " +
+      'echo "daemon : $p"; else echo "daemon : 0"; fi; ' +
+    's=$(cat /data/adb/fps_boost_ctl.state 2>/dev/null | head -n1); ' +
+    '[ -n "$s" ] && echo "state : $s"';
+
+  /* 模块状态显示在 hero 大卡里（跟着 15s 轮询刷新）：
+     正常时一行「模块已启用 · 守护进程运行中」，任一环节不对就变警告色并写明原因。
+     模块启用状态直接看 /data/adb/modules/<id>：KernelSU 与 Magisk 都用 disable 文件
+     表示停用，比桥接的 moduleInfo().enabled 可靠（各管理器版本字段不一致）。 */
+  var MOD_TEXT = {
+    enabled:  "已启用",
+    disabled: "已禁用",
+    removed:  "待卸载",
+    absent:   "未安装"
+  };
+
+  function renderModuleState(o) {
+    var line = $("heroMod"), txt = $("heroModTxt"), s, dp, nodeOk;
+    if (!line || !txt) return;
+
+    dp = parseInt(o.daemon, 10) || 0;
+    nodeOk = o.node === "1";
+
+    s = (o.mod === "enabled" ? "" : "模块" + (MOD_TEXT[o.mod] || "未知") + " · ") +
+        "守护进程" + (dp > 0 ? "运行中" : "未运行");
+    if (!nodeOk) s += " · 内核节点缺失";
+    else if (dp <= 0) s += "（重装或重启模块拉起）";
+
+    txt.textContent = s;
+    line.className = "modline" + (o.mod === "enabled" && dp > 0 && nodeOk ? "" : " warn");
+    line.title = dp > 0
+      ? ("pid " + dp + (o.state ? " · " + o.state : ""))
+      : (o.state || "");
+  }
+
+  function refreshModuleState() {
+    return KSU.exec(MOD_CMD).then(function (r) {
+      if (r.errno === 0 && r.stdout) renderModuleState(parseStatus(r.stdout));
+    });
+  }
+
   /* ------------------------------------------------------- 快速参数 / 开关 */
   function applyQuick() {
     var t = clean($("t_target").value, "0-9,/") || "60";
@@ -262,6 +321,10 @@
     return KSU.exec(shWrite(PROC + "/enable", on ? "1" : "0")).then(function (r) {
       if (r.errno !== 0) toast("失败：" + (r.stderr || r.stdout));
       return refresh();
+    }).then(function () {
+      /* 内核 enable 可能被黑名单 / only_listed 改掉，写完立刻回读卡片上的「提频
+         接管」行，别让界面与内核不一致 */
+      refreshModuleState();
     });
   }
 
@@ -622,7 +685,7 @@
 
   function bindHome() {
     var b;
-    if ((b = $("btnRefresh"))) b.onclick = refresh;
+    if ((b = $("btnRefresh"))) b.onclick = function () { refresh(); refreshModuleState(); };
     if ((b = $("swEnable"))) b.onchange = function () { setEnable(this.checked); };
     if ((b = $("btnApply"))) b.onclick = applyQuick;
     if ((b = $("btnSaveOpts"))) b.onclick = saveOpts;
@@ -766,13 +829,19 @@
     safe(function () { fillRtgId("o_rtgid"); fillRtgId("t_rtg"); });
     safe(function () { refresh(); });
     safe(loadConf); safe(loadOpts); safe(loadMode); safe(refreshAbout);
-    /* 每 3s 只看一眼首页状态；页面在后台/息屏时跳过 —— 每次 refresh() 都要起一次
-       shell，后台白跑既费电又没意义 */
+    safe(refreshModuleState);
+    /* 每 3s 只看一眼首页状态；页面在后台/息屏时跳过 —— 每次 refresh() 都要起一 次
+       shell，后台白跑既费电又没意义。
+       模块状态变化很慢（装/卸模块、守护进程起停），每 5 轮（15s）才读一次。 */
+    var modTick = 0;
     setInterval(function () {
       var h;
       if (document.hidden) return;
       h = $("page-home");
-      if (h && h.className.indexOf("active") >= 0) refresh();
+      if (h && h.className.indexOf("active") >= 0) {
+        refresh();
+        if (++modTick >= 5) { modTick = 0; refreshModuleState(); }
+      }
     }, 3000);
 
     /* 回到前台立刻补一次，不用等下一个 3s 周期 */

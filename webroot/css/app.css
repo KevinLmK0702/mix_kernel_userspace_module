@@ -1496,3 +1496,23 @@ main {
   user-select: text;
   -webkit-touch-callout: default;
 }
+
+/* hero 大卡里的模块状态行：绿点 = 正常，红点 + 高亮 = 有问题（hero 底色恒为深色，
+   所以两套主题都用半透明白字） */
+.hero .modline {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 11px;
+  font-size: 13px; font-weight: 600; line-height: 1.4;
+  color: rgba(255, 255, 255, .68);
+}
+.hero .modline .dot {
+  flex: 0 0 auto;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #34C759;
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, .16);
+}
+.hero .modline.warn { color: rgba(255, 255, 255, .95); }
+.hero .modline.warn .dot {
+  background: #FF6B6B;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, .18);
+}

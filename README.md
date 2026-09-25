@@ -48,8 +48,8 @@ macOS 垃圾文件。打包后自检：`module.prop` / `customize.sh` / `service
 
 Manager → 模块 → WebUI。三个页面（底部导航，选中项为药丸底高亮）：
 
-- **主界面**：顶部大标题 + **状态大卡**（只有文字：状态 / 当前模式+包名 / 目标与帧率档位；
-  底色表示状态——提频中深绿、待机中浅绿、已关闭红）、
+- **主界面**：顶部大标题 + **状态大卡**（只有文字：状态 / 当前模式+包名 / 目标与帧率档位 /
+  模块与守护进程状态行；底色表示状态——提频中深绿、待机中浅绿、已关闭灰）、
   状态药丸（enable / boost / rtg）、信息行列表（实测帧率 / 提频状态 / 触发次数 / 热控压制）、
   可折叠的「内核原始状态」、快速参数（立即写 `/proc`）、模式切换（省电/均衡/性能/极速）、
   全局选项（写入 `fps_boost_ctl.opts`，持久），底部「日志」入口。
@@ -185,10 +185,28 @@ FAS 系（含 [fas-rs](https://github.com/shadow3aaa/fas-rs) 这类用户态实�
 ## 排障
 
 - `cat /data/adb/fps_boost_ctl.state`：最近一次套用
-- `cat /data/adb/fps_boost_ctl.log`：守护进程日志（含 mode/merge/套用记录）
+- `cat /data/adb/fps_boost_ctl.log`：守护进程日志（含 mode/merge/套用记录，以及提频事件）
 - `cat /proc/fps_boost/status`：内核侧真实值
 - 状态一直是「空闲」但游戏在掉帧：确认 `enable=1`、`target_list/eff_target` 是你要的帧率、`samples` 在涨
 - WebUI 打不开/报错：看「关于 → 运行环境自检」，红条会直接显示 JS 错误原因
+- 状态卡底部那行会直接写明是哪一环没生效：`模块已禁用`（在管理器里重新启用）/ `内核节点缺失`
+  （内核没编 `CONFIG_MTK_FPS_BOOST`）/ `守护进程未运行`（重装模块或重启后由 `service.sh` 拉起）；
+  都正常时是绿点 + `模块已启用 · 守护进程运行中`
+
+### 日志里的提频事件
+
+守护进程每秒读一次内核 `status`，只在 `boosting` 从 0 变 1 / 从 1 变 0 时各写一条，不会刷屏：
+
+```
+提频开始 pkg=com.tencent.tmgp.sgame fps=52 pct=75% min=1200000/1540000/1600000 第 13 次
+提频结束 持续 7s pkg=com.tencent.tmgp.sgame fps=60 峰值 min=1500000/1800000/1600000 累计 13 次 · 热控 0 / 外部 2
+提频(瞬时) 漏记 5 次起止 · fps=55 pct=60% min=1110000/1400000/1600000 累计 18 次
+```
+
+- `min=` 是各 cluster **实际生效的最低频**（提频就是把最低频抬上去）；被热控 / perfmgr 拒绝时
+  它与内核想写的值（`status` 里的 `user_min`）会不一样。
+- `提频(瞬时)` 是掉帧只持续几百毫秒、短于 1s 轮询周期、抓不到起止的补记行（攒到 5 次或 30s 写一条）。
+- `mode=` / `pkg=` / `profile=` 那一行存在 `/data/adb/fps_boost_ctl.state`，首页「模块状态」卡也会显示。
 
 ### 开了模块反而跑分变低？
 

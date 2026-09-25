@@ -117,6 +117,7 @@ while :; do
     fb_tick
 
     fb_foreground_pkg
+    fb_boost_log_tick          # 提频日志：放在这里才拿得到本轮的包名
     pkg="$FB_PKG"
     prof=$(fb_profile_for "$pkg")
     key="$pkg|$prof"

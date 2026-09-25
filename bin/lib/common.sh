@@ -346,3 +346,102 @@ fb_watch() {
     fi
     return 1
 }
+
+# ------------------------------------------------------------ 提频事件日志
+# 内核 /proc/fps_boost/status 每行是 "<key><若干空格>: <value>"（见内核
+# fb_status_show），所以 IFS=: 切一刀就够，值前那个空格用 ${val# } 去掉。
+# 这里用 shell 内建 read 一次读完再 case 匹配，不额外 fork（每秒都要跑）。
+fb_status_scan() {
+    local key val m mins=""
+
+    FB_S_BOOSTING=""
+    FB_S_PCT=""
+    FB_S_FPS=""
+    FB_S_EV=""
+    FB_S_CAPPED=""
+    FB_S_FOREIGN=""
+    FB_S_MINS=""
+
+    [ -r "$FB_PROC/status" ] || return 1
+
+    while IFS=: read -r key val; do
+        case "$key" in
+            boosting*)     FB_S_BOOSTING=${val# } ;;
+            cur_pct*)      FB_S_PCT=${val# } ;;
+            ema_fps*)      FB_S_FPS=${val# } ;;
+            boost_events*) FB_S_EV=${val# } ;;
+            capped_event*) FB_S_CAPPED=${val# } ;;
+            foreign_evt*)  FB_S_FOREIGN=${val# } ;;
+            policy[0-9]*)
+                # "min=<生效最低频> max=… user_min=…"：# 取最短前缀，命中的是第一个 min=
+                m=${val#*min=}
+                mins="$mins${m%% *}/" ;;
+        esac
+    done < "$FB_PROC/status"
+
+    FB_S_MINS=${mins%/}
+    return 0
+}
+
+# 只在 boosting 0->1 / 1->0 时各写一条日志（每秒都写会把 400 行的日志刷爆）：
+#   提频开始 … 本次抬到的频率 min / 当前 fps / 提频百分比 / 累计第几次
+#   提频结束 … 持续多久 / 峰值 min / 累计次数 / 热控压制与外部改频次数
+# 掉帧只持续几百毫秒（短于一个轮询周期）时抓不到边沿，用 boost_events 的增量兜底
+# 补记，攒到 5 次或 30s 才写一条。
+FB_BOOST_ON=""          # 上一次采到的 boosting（"" = 还没采过）
+FB_BOOST_SINCE=0        # 本轮提频的起始时间
+FB_BOOST_PKG=""         # 本轮提频时的前台包名
+FB_BOOST_PEAK=""        # 本轮见过的最大 min 组合
+FB_BOOST_EV_PREV=""     # 上一次的 boost_events（算增量用）
+FB_BOOST_MISSED=0       # 没抓到边沿、待补记的次数
+FB_BOOST_MISSED_T=0     # 上次补记时间（限频）
+
+fb_boost_log_tick() {
+    local now elapsed d
+
+    fb_status_scan || return 0
+    case "$FB_S_BOOSTING" in ''|*[!0-9]*) return 0 ;; esac
+
+    now=$(date +%s)
+
+    if [ "$FB_S_BOOSTING" != "$FB_BOOST_ON" ]; then
+        if [ "$FB_S_BOOSTING" = "1" ]; then
+            FB_BOOST_SINCE=$now
+            FB_BOOST_PKG="${FB_PKG:-?}"
+            FB_BOOST_PEAK="$FB_S_MINS"
+            fb_log "提频开始 pkg=$FB_BOOST_PKG fps=${FB_S_FPS:-0} pct=${FB_S_PCT:-0}% min=${FB_S_MINS:-?} 第 ${FB_S_EV:-0} 次"
+        elif [ "$FB_BOOST_ON" = "1" ]; then
+            elapsed=$((now - ${FB_BOOST_SINCE:-0}))
+            [ "$elapsed" -lt 0 ] && elapsed=0
+            fb_log "提频结束 持续 ${elapsed}s pkg=${FB_BOOST_PKG:-?} fps=${FB_S_FPS:-0} 峰值 min=${FB_BOOST_PEAK:-?} 累计 ${FB_S_EV:-0} 次 · 热控 ${FB_S_CAPPED:-0} / 外部 ${FB_S_FOREIGN:-0}"
+        fi
+        FB_BOOST_ON="$FB_S_BOOSTING"
+    elif [ "$FB_S_BOOSTING" = "1" ] && [ -n "$FB_S_MINS" ] && [ "$FB_S_MINS" != "$FB_BOOST_PEAK" ]; then
+        # 提频过程中频率又被抬高：只记峰值，不再写日志
+        FB_BOOST_PEAK="$FB_S_MINS"
+    fi
+
+    # 提频期间不累计：持续提频时 boost_events 每次重新触发都会 +1，那不是"漏记"
+    if [ "$FB_S_BOOSTING" != "1" ]; then
+        d=0
+        case "$FB_S_EV" in
+            ''|*[!0-9]*) ;;
+            *)
+                case "$FB_BOOST_EV_PREV" in
+                    ''|*[!0-9]*) ;;
+                    *) d=$((FB_S_EV - FB_BOOST_EV_PREV)) ;;
+                esac ;;
+        esac
+        if [ "$d" -gt 0 ]; then
+            FB_BOOST_MISSED=$((FB_BOOST_MISSED + d))
+        fi
+        if [ "$FB_BOOST_MISSED" -gt 0 ]; then
+            if [ "$FB_BOOST_MISSED" -ge 5 ] || [ "$((now - FB_BOOST_MISSED_T))" -ge 30 ]; then
+                FB_BOOST_MISSED_T=$now
+                fb_log "提频(瞬时) 漏记 $FB_BOOST_MISSED 次起止 · fps=${FB_S_FPS:-0} pct=${FB_S_PCT:-0}% min=${FB_S_MINS:-?} 累计 ${FB_S_EV:-0} 次"
+                FB_BOOST_MISSED=0
+            fi
+        fi
+    fi
+    FB_BOOST_EV_PREV="$FB_S_EV"
+}
