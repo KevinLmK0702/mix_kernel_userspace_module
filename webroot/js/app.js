@@ -133,6 +133,31 @@
     return o;
   }
 
+  /* hero 副标题：内核 fb_status_show() 只输出 pid，从来没有 pkg 字段，
+     所以不能只看 o.pkg（否则真机永远显示"无前台渲染进程"）。
+     降级顺序：o.pkg -> 按 pid 反查 /proc/<pid>/cmdline（每个 pid 只查一次）-> pid */
+  var heroPid = -1, heroPidName = "";
+
+  function heroSubText(o) {
+    if (o.pkg && o.pkg !== "0") return o.pkg;
+    var pid = parseInt(o.pid, 10) || 0;
+    if (pid <= 0) { heroPid = -1; heroPidName = ""; return "无前台渲染进程"; }
+    if (pid !== heroPid) {
+      heroPid = pid;
+      heroPidName = "";
+      KSU.exec("cat /proc/" + pid + "/cmdline 2>/dev/null").then(function (r) {
+        /* cmdline 用 \0 分隔；部分桥接会丢掉 NUL，所以按行/空白再取第一个 token */
+        var raw = String(r.stdout || "");
+        var n = raw.split("\u0000")[0].split(/\s+/)[0];
+        if (heroPid !== pid || !n) return;
+        heroPidName = n;
+        var el = $("heroSub");
+        if (el) el.textContent = "模式 " + curMode + " · " + n;
+      });
+    }
+    return "渲染进程 " + (heroPidName || ("pid " + pid));
+  }
+
   function renderStatus(o) {
     var on = o.enable === "1", b = o.boosting === "1";
     $("swEnable").checked = on;
@@ -147,8 +172,7 @@
     if (hero) {
       hero.className = "hero " + (on ? (b ? "on hot" : "on") : "off");
       $("heroState").textContent = on ? (b ? "提频中" : "待机中") : "已关闭";
-      $("heroSub").textContent = "模式 " + curMode + " · " +
-        (o.pkg && o.pkg !== "0" ? o.pkg : "无前台渲染进程");
+      $("heroSub").textContent = "模式 " + curMode + " · " + heroSubText(o);
       var tgt = (o.target_list && o.target_list !== "(none)") ? o.target_list : o.target_fps;
       $("heroTag").textContent = "目标 " + (tgt || "-") + " fps ± " + (o.margin_fps || 0) +
         " · eff " + (o.eff_target || "-") + " · pct " + (o.boost_pct || 0) +

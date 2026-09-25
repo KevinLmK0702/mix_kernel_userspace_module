@@ -442,6 +442,9 @@ body {
 }
 
 main {
+  /* 全局没有 box-sizing 重置；若用 content-box，width:min(100%,…) + 左右 padding
+     会比视口宽出 2×padding，配合 body{overflow-x:hidden} 会把每张卡片右侧裁掉 */
+  box-sizing: border-box;
   width: min(100%, 760px);
   margin: 0 auto;
   padding-left: max(14px, env(safe-area-inset-left));
@@ -978,6 +981,7 @@ body {
 }
 
 main {
+  box-sizing: border-box;
   width: min(100%, 780px);
   margin: 0 auto;
   padding-left: 28px;
@@ -1305,9 +1309,16 @@ main {
   left: 0;
   right: 0;
   bottom: 0;
+  /* 上一段 @media (min-width:900px) 只改了 left/right，这里的 left:0 会把居中定位
+     打回左边，但 transform:translateX(-50%) 和 width 仍在生效 -> 半条导航跑到屏外。
+     必须在这里一并重置。 */
+  transform: none;
+  width: auto;
+  border: 0;
+  border-top: 1px solid #2d2d2f;
+  border-radius: 0;
   padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
   background: #000;
-  border-top: 1px solid #2d2d2f;
   box-shadow: none;
 }
 
