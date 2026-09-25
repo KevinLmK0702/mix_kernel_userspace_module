@@ -632,6 +632,21 @@
     if (b) b.onclick = refreshAbout;
   }
 
+  /* 清理部分旧版 Android WebView / 宿主注入的裸字面 \\n 文本，避免页面顶部出现 \\n\\n。 */
+  function cleanBootNoise() {
+    try {
+      var body = document.body, i, n, s;
+      if (!body) return;
+      for (i = 0; i < body.childNodes.length; i++) {
+        n = body.childNodes[i];
+        if (n && n.nodeType === 3) {
+          s = String(n.nodeValue || "");
+          if (/^(?:\\s|\\\\[nr])+$/.test(s)) n.nodeValue = "";
+        }
+      }
+    } catch (e) {}
+  }
+
   /* ------------------------------------------------------------ UI 反馈增强 */
   function enhanceUi() {
     var ids = ["btnApply", "btnSaveOpts", "btnSaveConf", "btnRefresh", "btnAboutRefresh"];
@@ -658,7 +673,7 @@
   function safe(fn) { try { return fn(); } catch (e) { window.showErr && window.showErr(e && e.message ? e.message : String(e)); } }
 
   function boot() {
-    safe(bindTheme); safe(bindNav); safe(bindHome); safe(bindConfig); safe(bindAbout); safe(enhanceUi);
+    safe(cleanBootNoise); safe(bindTheme); safe(bindNav); safe(bindHome); safe(bindConfig); safe(bindAbout); safe(enhanceUi);
     safe(function () { fillRtgId("o_rtgid"); fillRtgId("t_rtg"); });
     safe(function () { refresh(); });
     safe(loadConf); safe(loadOpts); safe(loadMode); safe(refreshAbout);

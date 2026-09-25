@@ -753,3 +753,175 @@ main {
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* ============================================================================
+ * 实机兼容 / 紧凑移动端修正
+ * Android WebView / KernelSU Manager 兼容：避免 color-mix() 等新 CSS。
+ * ========================================================================== */
+
+html[data-theme="dark"] {
+  --topbar-bg: rgba(0, 0, 0, .92);
+}
+html[data-theme="light"] {
+  --topbar-bg: rgba(242, 242, 244, .94);
+}
+
+body {
+  background: var(--bg);
+}
+
+.topbar {
+  padding-top: calc(8px + env(safe-area-inset-top));
+  padding-bottom: 8px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--outline);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.topbar h1 {
+  font-size: 30px;
+  letter-spacing: -.45px;
+}
+
+.topbar .tb-sub {
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.hero {
+  margin-top: 9px;
+  margin-bottom: 2px;
+  padding: 18px 18px;
+  border-radius: 23px;
+}
+
+.hero .st {
+  font-size: 26px;
+}
+
+.hero .sub {
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+.hero .tag {
+  font-size: 11.5px;
+  margin-top: 3px;
+}
+
+.card {
+  margin: 10px 0;
+  border-radius: 21px;
+}
+
+.card-head {
+  padding: 15px 16px 0;
+}
+
+.card-head h3 {
+  font-size: 17px;
+}
+
+.card-head .cap {
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
+.card-body {
+  padding: 5px 16px 12px;
+}
+
+.item {
+  min-height: 42px;
+  padding: 9px 0;
+}
+
+.item .t {
+  font-size: 15px;
+}
+
+.item .s {
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
+.item .v {
+  font-size: 14px;
+}
+
+.item .v b {
+  font-size: 17px;
+}
+
+.sw {
+  width: 50px;
+  height: 30px;
+}
+
+.sw input:checked + i:after {
+  transform: translateX(18px);
+}
+
+.chips {
+  margin-top: 7px;
+}
+
+.pill {
+  padding: 5px 10px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 560px) {
+  main {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  body {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .topbar {
+    margin: 0 -10px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .hero .st {
+    font-size: 25px;
+  }
+
+  .card {
+    margin: 9px 0;
+  }
+
+  .card-head {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .card-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .item {
+    padding: 8px 0;
+  }
+
+  .navbar {
+    padding-top: 4px;
+  }
+
+  .navbar button {
+    min-height: 48px;
+  }
+}
+
+@media (min-width: 900px) {
+  .topbar {
+    border-radius: 0 0 18px 18px;
+  }
+}
