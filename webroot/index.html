@@ -27,6 +27,7 @@
       if (!d) {
         d = document.createElement("div");
         d.id = "errbar";
+        d.setAttribute("role", "alert");   /* 出错时让辅助技术立即播报 */
         (document.body || document.documentElement).appendChild(d);
       }
       d.textContent = "WebUI 错误: " + msg;

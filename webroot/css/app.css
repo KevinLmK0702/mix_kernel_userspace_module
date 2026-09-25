@@ -1434,3 +1434,37 @@ main {
     font-size: 13px;
   }
 }
+
+/* ============================================================================
+ * 交互与可用性补充（2026-09-25）
+ *   只补 JS 已经在用但缺样式的类，以及长按复制相关的属性；
+ *   不动上面的视觉体系，也不覆盖任何现有选择器。
+ * ========================================================================== */
+
+/* enhanceUi() 给按钮加的按压标记：之前只有 JS、没有样式，等于白加 */
+.btn.is-pressing,
+.icon-btn.is-pressing,
+.iconbtn.is-pressing {
+  transform: scale(.97);
+  filter: brightness(.96);
+}
+
+/* 所在卡片被改过 → 保存按钮上点亮一个小圆点，提醒“还没保存” */
+.btn.dirty::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .9;
+}
+
+/* 日志/状态块要能长按选中复制（Android 上默认会弹复制菜单） */
+.mono {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}

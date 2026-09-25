@@ -95,15 +95,31 @@
   }
 
   /* ---------------------------------------------------------------- 导航 */
+  /* 每个页面各自的滚动位置：切回来时接着看，而不是永远跳回顶部 */
+  var pageScroll = {};
+
   function showPage(pg) {
     var bs = document.querySelectorAll("#navbar button"), ss = document.querySelectorAll(".page"), i;
+    var html = document.documentElement, prev = document.querySelector(".page.active"), y;
+
+    if (prev && prev.id) pageScroll[prev.id] = window.pageYOffset || 0;
+
     for (i = 0; i < bs.length; i++)
       bs[i].setAttribute("aria-selected", bs[i].getAttribute("data-page") === pg ? "true" : "false");
     for (i = 0; i < ss.length; i++) {
       if (ss[i].id === "page-" + pg) ss[i].className = "page active";
       else ss[i].className = "page";
     }
-    try { window.scrollTo(0, 0); } catch (e) {}
+
+    /* CSS 里 scroll-behavior: smooth，切页时要瞬时定位，否则会从上往下“滑”一遍 */
+    y = pageScroll["page-" + pg];
+    if (y === undefined) y = 0;
+    try {
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, y);
+      html.style.scrollBehavior = "";
+    } catch (e) {}
+
     if (pg === "config" && !instApps.length) loadInstalled();
   }
 
@@ -667,6 +683,37 @@
     if (nav) nav.setAttribute("role", "navigation");
     var cards = document.querySelectorAll(".card");
     for (i = 0; i < cards.length; i++) cards[i].setAttribute("role", "region");
+
+    /* 点 label 就能聚焦对应输入框：自动补 for=，以后新增字段也不用管 */
+    var flds = document.querySelectorAll(".fld");
+    for (i = 0; i < flds.length; i++) {
+      var lb = flds[i].querySelector("label"), ctl = flds[i].querySelector("input, select");
+      if (lb && ctl && ctl.id && !lb.getAttribute("for")) lb.setAttribute("for", ctl.id);
+    }
+
+    /* 提示条对辅助技术可见 */
+    var tst = $("toast");
+    if (tst) { tst.setAttribute("role", "status"); tst.setAttribute("aria-live", "polite"); }
+
+    /* 改过输入 → 对应保存按钮点亮小圆点（CSS .btn.dirty::after） */
+    bindDirty("btnSaveOpts");
+    bindDirty("btnSaveConf");
+  }
+
+  /* 卡片里任何输入变化就给保存按钮加 .dirty；点保存时清掉 */
+  function bindDirty(btnId) {
+    var btn = $(btnId), card;
+    if (!btn || !btn.closest) return;
+    card = btn.closest(".card");
+    if (!card) return;
+    var mark = function () {
+      if (btn.className.indexOf("dirty") < 0) btn.className += " dirty";
+    };
+    card.addEventListener("input", mark);
+    card.addEventListener("change", mark);
+    btn.addEventListener("click", function () {
+      btn.className = btn.className.replace(/\s+dirty/g, "");
+    });
   }
 
   /* ------------------------------------------------------------ 启动 */
@@ -677,10 +724,22 @@
     safe(function () { fillRtgId("o_rtgid"); fillRtgId("t_rtg"); });
     safe(function () { refresh(); });
     safe(loadConf); safe(loadOpts); safe(loadMode); safe(refreshAbout);
+    /* 每 3s 只看一眼首页状态；页面在后台/息屏时跳过 —— 每次 refresh() 都要起一次
+       shell，后台白跑既费电又没意义 */
     setInterval(function () {
-      var h = $("page-home");
+      var h;
+      if (document.hidden) return;
+      h = $("page-home");
       if (h && h.className.indexOf("active") >= 0) refresh();
     }, 3000);
+
+    /* 回到前台立刻补一次，不用等下一个 3s 周期 */
+    document.addEventListener("visibilitychange", function () {
+      var h;
+      if (document.hidden) return;
+      h = $("page-home");
+      if (h && h.className.indexOf("active") >= 0) refresh();
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
