@@ -1071,6 +1071,9 @@ main {
 }
 
 .hero .st {
+  /* hero 底色在两套主题下都是深色（#163b29 / #29292b），标题必须显式用白色；
+     不写就会继承 --on，亮色主题下是近黑色 -> 深绿底上几乎看不见 */
+  color: #fff;
   font-size: 37px;
   line-height: 1.08;
   letter-spacing: -.6px;
@@ -1136,14 +1139,15 @@ main {
   margin: 0 7px 7px 0;
   font-size: 13px;
   font-weight: 650;
-  background: #2b2b2d;
-  color: #a7a7ac;
+  /* 用主题变量：写死 #2b2b2d/#a7a7ac 在亮色主题下是黑药丸 */
+  background: var(--surface-2);
+  color: var(--on-var);
 }
 
 .pill.on,
 .pill.active {
-  background: rgba(59,130,246,.22);
-  color: #6ea8ff;
+  background: var(--accent-soft);
+  color: var(--accent-2);
 }
 
 .card {
@@ -1231,7 +1235,7 @@ main {
 
 .sw i {
   border: 0;
-  background: #3a3a3c;
+  background: var(--surface-3);
 }
 
 .sw i:after {
@@ -1239,7 +1243,8 @@ main {
   width: 22px;
   height: 22px;
   margin-top: -11px;
-  background: #d9d9dc;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
 }
 
 .sw input:checked + i {
@@ -1337,6 +1342,15 @@ main {
   padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
   background: #000;
   box-shadow: none;
+}
+
+/* 深色底栏在亮色主题下是一块突兀的黑板：改成白底 + 浅分割线，选中项用 --on（近黑） */
+html[data-theme="light"] .navbar {
+  background: var(--surface);
+  border-top-color: var(--outline);
+}
+html[data-theme="light"] .navbar button[aria-selected="true"] {
+  color: var(--on);
 }
 
 .navbar button {
